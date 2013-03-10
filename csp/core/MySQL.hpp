@@ -1,7 +1,9 @@
 /*
 	http://blog.trilabs.co.tz/2011/09/connect-to-mysql-using-c-on-ubuntu.html
 
-	Add the following lines to the main code:
+	Requires package 'libmysqlclient-dev'
+
+	Requires pragma:
 	#pragma link "mysqlclient"
 	#pragma include "/usr/include/mysql"
 */
