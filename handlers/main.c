@@ -32,9 +32,9 @@ int main(int argc, char *argv[])
 			
 //			printf("%s\n", read_xbuf->ptr);
 			
-			xbuf_replfrto(read_xbuf, read_xbuf->ptr, read_xbuf->ptr + 16, " /", " /?");
-			xbuf_replfrto(read_xbuf, read_xbuf->ptr, read_xbuf->ptr + 16, ".api", ".cpp");
-			xbuf_replfrto(read_xbuf, read_xbuf->ptr, read_xbuf->ptr + 16, ".cpp?", ".cpp&");
+			xbuf_replfrto(read_xbuf, read_xbuf->ptr, read_xbuf->ptr + 25, " /", " /?");
+			xbuf_replfrto(read_xbuf, read_xbuf->ptr, read_xbuf->ptr + 25, ".api", ".cpp");
+			xbuf_replfrto(read_xbuf, read_xbuf->ptr, read_xbuf->ptr + 25, ".cpp?", ".cpp&");
 		}
 		break;
 	}

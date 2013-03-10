@@ -1,7 +1,5 @@
 /*
-
-JsonView is used to output JSON or JSONP
-
+	JsonView is used to output JSON or JSONP.
 */
 
 #ifndef _JSON_VIEW_HPP_
