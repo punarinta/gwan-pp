@@ -12,6 +12,9 @@ struct atom_route
 
 class Router
 {
+private:
+	bool runDone = false;
+
 protected:
 	std::vector<struct atom_route> routes;
 	char **argv;
@@ -37,13 +40,18 @@ public:
 
 	int run()
 	{
-		int i = this->argc, called = 0;
-		while(i--)
+		if(this->runDone) return 0;
+		else
 		{
-			// TODO: if no '=' in argument then it's a function
-			if(this->call(this->argv[i])) called++;
+			int i = this->argc, called = 0;
+			this->runDone = true;
+			while(i--)
+			{
+				// TODO: if no '=' in argument then it's a function
+				if(this->call(this->argv[i])) called++;
+			}
+			return called;
 		}
-		return called;
 	}
 
 	bool bind(char *name, void (*func)(int, char**))

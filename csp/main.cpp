@@ -64,8 +64,6 @@ int main(int argc, char *argv[])
 		mysql_free_result(res);
 	}
 
-	if(sql) delete sql;
 	output->flush();
-	delete app, output;
 	return 200;
 }
