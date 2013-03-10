@@ -65,5 +65,7 @@ int main(int argc, char *argv[])
 	}
 
 	output->flush();
+
+	if(sql) delete sql;		//	we need to close the connecion
 	return 200;
 }

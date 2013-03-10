@@ -1,15 +1,17 @@
 /*
 	http://blog.trilabs.co.tz/2011/09/connect-to-mysql-using-c-on-ubuntu.html
+
+	Add the following lines to the main code:
+	#pragma link "mysqlclient"
+	#pragma include "/usr/include/mysql"
 */
+
 #ifndef _MYSQL_HPP_
 #define _MYSQL_HPP_ 1
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <mysql.h>
-
-#pragma link "mysqlclient"
-//#pragma include "/usr/include/mysql"
 
 class MySQL
 {
