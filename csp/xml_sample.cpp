@@ -14,8 +14,6 @@ int main(int argc, char *argv[])
 {
 	app = new Application(argc, argv);
 	output = new XmlView(argv);
- 
-	output->echo("");
 
 	output->flush();
 	return 200;

@@ -16,36 +16,48 @@
 class XmlView : public GenericView
 {
 private:
-	TiXmlDocument doc;
-	TiXmlElement *xml;
+	TiXmlDocument *doc;
+	TiXmlElement *xmlroot;
 
 public:
 
 	XmlView(char *argv[]) : GenericView(argv)
 	{
 		this->contentType = "application/xml";
+		this->doc = new TiXmlDocument;
+
+		TiXmlDeclaration *decl = new TiXmlDeclaration("1.0", "utf-8", "");
+		this->doc->LinkEndChild(decl);
+
+		// TODO: decide later if it is necessary/useful to posess an own XML or not
+		this->xmlroot = new TiXmlElement("root");  
+		this->doc->LinkEndChild(this->xmlroot);  
 	}
 
-	void echo(char *format, ...)	// block generic echo by creating a dummy
+	~XmlView()
 	{
-		TiXmlDeclaration *decl = new TiXmlDeclaration( "1.0", "utf-8", "");
-		this->doc.LinkEndChild(decl);
+		delete this->doc;
+	}
 
-		this->xml = new TiXmlElement("MyApp");  
-		this->xml->SetAttribute("value","5");
-		this->xml->SetAttribute("name","me");
-		this->doc.LinkEndChild(this->xml);  
+	void echo(char *format, ...)
+	{
+	}
+
+	TiXmlElement* xml()	// make own XML-object read-only
+	{
+		return this->xmlroot;
 	}
 
 	void flush()
 	{
 		if(!this->headersSet) this->flushHeaders();
 
-		TiXmlPrinter printer;
-		printer.SetIndent("    ");
-		this->doc.Accept(&printer);
-		xbuf_cat(this->httpOut, (char *) printer.CStr());
+		TiXmlPrinter *printer = new TiXmlPrinter;
+		printer->SetIndent("    ");
+		this->doc->Accept(printer);
+		xbuf_cat(this->httpOut, (char *) printer->CStr());
 		GenericView::flush();
+		delete printer;
 	}
 };
 
