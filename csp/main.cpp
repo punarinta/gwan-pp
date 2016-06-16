@@ -1,10 +1,12 @@
 #pragma GCC diagnostic ignored "-Wwrite-strings"
+#pragma GCC diagnostic ignored "-Wpointer-arith"
 
 #include <stdio.h>
 #include <string>
 #include "gwan.h"
 #include "core/Application.hpp"
 #include "core/MySQL.hpp"
+#include "core/Bcrypt.hpp"
 #include "core/View/JsonView.hpp"
 #include "config/db.cfg"
 
@@ -62,6 +64,10 @@ int main(int argc, char *argv[])
 		    arr->addElement(jsn_STRING, (long) rows[i][0]);
 		}
 	}
+
+	Bcrypt *crypt = new Bcrypt();
+	string hash = crypt->getHash("test", 14);
+	output->json->add("hash", (char *) hash.c_str());
 
 	output->flush();
 
