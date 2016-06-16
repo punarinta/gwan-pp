@@ -7,6 +7,7 @@ csp/main.cpp is an example of usage
 
 Setup
 =======
+```
 sudo apt-get install libmysqlclient-dev
 sudo apt-get install libtinyxml-dev
 
@@ -18,3 +19,4 @@ rm -rf 0.0.0.0:8080/#0.0.0.0/*
 git clone git@github.com:punarinta/gwan-pp.git 0.0.0.0:8080/#0.0.0.0
 cd 0.0.0.0:8080/#0.0.0.0
 cp csp/config/db.cfg.dist csp/config/db.cfg
+```
