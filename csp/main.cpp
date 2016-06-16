@@ -23,7 +23,7 @@ Application *app;
 
 int main(int argc, char *argv[])
 {
-	MYSQL_ROW row;
+	MYSQL_ROW *rows;
 
 	app = new Application(argc, argv);
 	output = new JsonView(argv);
@@ -53,17 +53,14 @@ int main(int argc, char *argv[])
 	MySQL *sql = new MySQL(DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DB);
 	sql->query("SET NAMES utf8");
 
-	MYSQL_RES *res = sql->query("SELECT txt FROM test_table LIMIT 2");
-
-	if (res)
+	if ((rows = sql->rows("SELECT txt FROM test_table LIMIT 2")))
 	{
 		JSON *arr = output->json->add(jsn_ARRAY, "arr", 0);
-		while ((row = mysql_fetch_row(res))!=NULL)
+
+		for (int i = 0; i < sql->count; i++)
 		{
-			// output->echo("%s<br>", row[0]);
-			arr->addElement(jsn_STRING, (long) row[0]);
+		    arr->addElement(jsn_STRING, (long) rows[i][0]);
 		}
-		mysql_free_result(res);
 	}
 
 	output->flush();
