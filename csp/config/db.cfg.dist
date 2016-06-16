@@ -1,0 +1,5 @@
+#define DB_HOST "localhost"
+#define DB_PORT 3306
+#define DB_USER "root2"
+#define DB_PASSWORD "password"
+#define DB_DB "test_db"
