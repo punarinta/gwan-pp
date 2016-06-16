@@ -6,6 +6,7 @@
 #include "core/Application.hpp"
 #include "core/MySQL.hpp"
 #include "core/View/JsonView.hpp"
+#include "config/db.cfg"
 
 #pragma link "mysqlclient"
 #pragma include "/usr/include/mysql"
@@ -33,6 +34,7 @@ int main(int argc, char *argv[])
 	{
 		printf("Lambda call. %s %d\n", app->argv(0), app->argc());
 		output->json->add("l_msg", "you've called an anon function ;)");
+
 		return;
 	});
 	app->run();
@@ -42,23 +44,23 @@ int main(int argc, char *argv[])
 	JSON *argvArr = output->json->addNode("argv");
 
 	int i = 0;
-	while(i < argc)
+	while (i < argc)
 	{
 		argvArr->add(argv[i], argv[i]);
 		i++;
 	}
 
-	MySQL *sql = new MySQL("localhost", 0, "root", "root", "test_db");
+	MySQL *sql = new MySQL(DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DB);
 	sql->query("SET NAMES utf8");
 
 	MYSQL_RES *res = sql->query("SELECT txt FROM test_table LIMIT 2");
 
-	if(res)
+	if (res)
 	{
 		JSON *arr = output->json->add(jsn_ARRAY, "arr", 0);
 		while ((row = mysql_fetch_row(res))!=NULL)
 		{
-			//output->echo("%s<br>", row[0]);
+			// output->echo("%s<br>", row[0]);
 			arr->addElement(jsn_STRING, (long) row[0]);
 		}
 		mysql_free_result(res);
@@ -66,6 +68,11 @@ int main(int argc, char *argv[])
 
 	output->flush();
 
-	if(sql) delete sql;		//	we need to close the connecion
+	if (sql)
+	{
+	    //we need to close the connection
+	    delete sql;
+	}
+
 	return 200;
 }

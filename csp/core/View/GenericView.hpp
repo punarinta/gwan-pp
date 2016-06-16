@@ -47,8 +47,13 @@ public:
 
 	bool header(char *name, char *value)
 	{
-		if(this->headersSet) return false;
+		if (this->headersSet)
+		{
+		    return false;
+		}
+
 		this->headers += std::string(name) + ": " + std::string(value) + "\r\n";
+
 		return true;
 	}
 
@@ -75,7 +80,10 @@ public:
 	void flush(void)
 	{
 		// TODO: flush() can later return some info about the flushed data, e.g. size
-		if(!this->headersSet) this->flushHeaders();
+		if (!this->headersSet)
+		{
+		    this->flushHeaders();
+		}
 		xbuf_cat(this->httpOut, (char *) this->payload.c_str());
 		u32toa(this->httpOut->ptr + this->ptrHeaderSize, this->httpOut->len - this->headersSize);		
 	}

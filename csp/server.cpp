@@ -22,8 +22,12 @@ int main(int argc, char *argv[])
 		exit(0);
 	});
 
-	if(!router->run()) output->echo("No valid method specified.");
+	if (!router->run())
+	{
+	    output->echo("No valid method specified.");
+	}
 
 	output->flush();
+
 	return 200;
 }

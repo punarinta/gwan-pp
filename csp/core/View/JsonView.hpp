@@ -40,11 +40,23 @@ public:
 
 	void flush()
 	{
-		if(!this->headersSet) this->flushHeaders();
+		if (!this->headersSet)
+		{
+		    this->flushHeaders();
+		}
 
-		if(this->padding) xbuf_cat(this->httpOut, "_jqjsp(");
+		if (this->padding)
+		{
+		    xbuf_cat(this->httpOut, "_jqjsp(");
+		}
+
 		xbuf_cat(this->httpOut, this->json->stringify());
-		if(this->padding) xbuf_cat(this->httpOut, ");");
+
+		if (this->padding)
+		{
+		    xbuf_cat(this->httpOut, ");");
+		}
+
 		GenericView::flush();
 	}
 };

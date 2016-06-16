@@ -24,7 +24,8 @@ void clean(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
 	long state = (long) argv[0];
-	switch(state)
+
+	switch (state)
 	{
 		case HDL_AFTER_READ:
 		{
@@ -38,6 +39,7 @@ int main(int argc, char *argv[])
 		}
 		break;
 	}
+
 	return(255);
 }
 

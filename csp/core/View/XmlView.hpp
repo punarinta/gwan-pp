@@ -50,7 +50,10 @@ public:
 
 	void flush()
 	{
-		if(!this->headersSet) this->flushHeaders();
+		if (!this->headersSet)
+		{
+		    this->flushHeaders();
+		}
 
 		TiXmlPrinter *printer = new TiXmlPrinter;
 		printer->SetIndent("    ");

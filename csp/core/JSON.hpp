@@ -26,7 +26,10 @@ public:
 
 	~JSON()
 	{
-		if(this->obj) jsn_free(this->obj);
+		if (this->obj)
+		{
+		    jsn_free(this->obj);
+		}
 	}
 
 	JSON *add(JSN_TYPE type, char *key, double value)		// Generic add()
@@ -63,6 +66,7 @@ public:
 	{
 		xbuf_t xbuf;
 		xbuf_init(&xbuf);
+
 		return jsn_totext(&xbuf, this->obj, 0);		//	0 - compressed, 1 - with tabs etc
 	}
 };

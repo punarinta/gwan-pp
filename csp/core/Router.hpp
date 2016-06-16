@@ -34,22 +34,33 @@ public:
 
 	char *getArgv(int i)
 	{
-		if(i>=this->argc) return NULL;
+		if (i >= this->argc)
+		{
+		    return NULL;
+		}
 		return this->argv[i];
 	}
 
 	int run()
 	{
-		if(this->runDone) return 0;
+		if (this->runDone)
+		{
+		    return 0;
+		}
 		else
 		{
 			int i = this->argc, called = 0;
 			this->runDone = true;
-			while(i--)
+
+			while (i--)
 			{
 				// TODO: if no '=' in argument then it's a function
-				if(this->call(this->argv[i])) called++;
+				if (this->call(this->argv[i]))
+				{
+				    called++;
+				}
 			}
+
 			return called;
 		}
 	}
@@ -60,6 +71,7 @@ public:
 		ar.name = strdup(name);
 		ar.func = func;
 		this->routes.push_back(ar);
+
 		return true;
 	}
 
@@ -67,21 +79,23 @@ public:
 	{
 		struct atom_route ar;
 		ar.name = strdup(name);
-		ar.func = (void (*)(int, char**))func;
+		ar.func = (void (*)(int, char**)) func;
 		this->routes.push_back(ar);
+
 		return true;
 	}
 
 	bool call(char *name)
 	{
-		for(int i=this->routes.size();i--;)
+		for (int i = this->routes.size(); i--;)
 		{
-			if(!strcmp(this->routes[i].name, name))
+			if (!strcmp(this->routes[i].name, name))
 			{
 				this->routes[i].func(this->argc, this->argv);
 				return true;
 			}
 		}
+
 		return false;
 	}
 };
