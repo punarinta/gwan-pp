@@ -1,4 +1,4 @@
 /_logs
 /gzip
 .idea
-csp/config/db.cfg
+csp/config/*.cfg
