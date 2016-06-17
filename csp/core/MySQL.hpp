@@ -36,7 +36,7 @@ public:
 
 	~MySQL()
 	{
-		if (this->result) delete this->result;
+		// if (this->result) delete this->result;
 
 		mysql_close(this->connection);
 	}
