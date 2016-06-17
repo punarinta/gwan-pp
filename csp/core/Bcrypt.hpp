@@ -1111,22 +1111,22 @@ private:
 
 
 public:
-    std::string create(const char *password, long strength)
+    std::string create(std::string password, long strength)
     {
         char salt[BCRYPT_HASHSIZE];
         char hash[BCRYPT_HASHSIZE];
         bcrypt_gensalt(strength, salt);
-        bcrypt_hashpw(password, salt, hash);
+        bcrypt_hashpw(password.c_str(), salt, hash);
 
         return std::string(hash);
     }
 
-    bool verify(const char *password, const char *expected_hash)
+    bool verify(std::string password, std::string expected_hash)
     {
         char hash[BCRYPT_HASHSIZE];
-        bcrypt_hashpw(password, expected_hash, hash);
+        bcrypt_hashpw(password.c_str(), expected_hash.c_str(), hash);
 
-        return (strcmp(expected_hash, hash) == 0);
+        return (strcmp(expected_hash.c_str(), hash) == 0);
     }
 };
 
