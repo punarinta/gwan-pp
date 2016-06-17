@@ -45,14 +45,14 @@ public:
 		delete buffer;
 	}
 
-	bool header(char *name, char *value)
+	bool header(std::string name, std::string value)
 	{
 		if (this->headersSet)
 		{
 		    return false;
 		}
 
-		this->headers += std::string(name) + ": " + std::string(value) + "\r\n";
+		this->headers += name + ": " + value + "\r\n";
 
 		return true;
 	}
