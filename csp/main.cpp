@@ -29,7 +29,12 @@ int main(int argc, char *argv[])
 
 	app = new Application(argc, argv);
 	output = new JsonView(argv);
+
 	output->header("Server", "Hello, world (full of headers)!");
+	output->header("Set-Cookie", "__session_id=someIdHere");
+
+	// session ID
+	output->json->add("sessionId", app->session->id);
 
 	app->router->bind("xxx", MyFunction);
 	app->router->bind("yyy", []() -> void
