@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	});
 	app->run();
 
-	output->json->addNode("subnode")->add("sample_int", 10)->parent()->add("sample_text", "hi!");
+	output->json->addNode("subnode")->add("sampleInt", 10)->parent()->add("sampleText", "hi!");
 
 	JSON *argvArr = output->json->addNode("argv");
 
@@ -66,8 +66,11 @@ int main(int argc, char *argv[])
 	}
 
 	Bcrypt *crypt = new Bcrypt();
-	string hash = crypt->getHash("test", 14);
-	output->json->add("hash", (char *) hash.c_str());
+	string hash = crypt->create("CorrectPassword", 12);
+
+	output->json->addNode("bcrypt")->add("hash", (char *) hash.c_str())
+	    ->parent()->add("isOk", crypt->verify("CorrectPassword", hash.c_str()))
+	    ->parent()->add("isNotOk", crypt->verify("WrongPassword", hash.c_str()));
 
 	output->flush();
 

@@ -13,21 +13,13 @@
 #include <errno.h>
 #include <string>
 
-#define RANDBYTES (16)
+#define RANDBYTES       (16)
 #define BCRYPT_HASHSIZE	(64)
+#define BF_N			16
 
 #ifndef __set_errno
 #define __set_errno(val) errno = (val)
 #endif
-
-extern int _crypt_output_magic(const char *setting, char *output, int size);
-extern char *_crypt_blowfish_rn(const char *key, const char *setting, char *output, int size);
-extern char *_crypt_gensalt_blowfish_rn(const char *prefix,	unsigned long count, const char *input, int size, char *output, int output_size);
-extern unsigned char _crypt_itoa64[];
-extern char *_crypt_gensalt_traditional_rn(const char *prefix,	unsigned long count, const char *input, int size, char *output, int output_size);
-extern char *_crypt_gensalt_extended_rn(const char *prefix,	unsigned long count, const char *input, int size, char *output, int output_size);
-extern char *_crypt_gensalt_md5_rn(const char *prefix, unsigned long count,	const char *input, int size, char *output, int output_size);
-
 
 #ifdef __i386__
     #define BF_ASM				1
@@ -40,11 +32,107 @@ extern char *_crypt_gensalt_md5_rn(const char *prefix, unsigned long count,	cons
     #define BF_SCALE			0
 #endif
 
+#define BF_safe_atoi64(dst, src) \
+{ \
+	tmp = (unsigned char)(src); \
+	if ((unsigned int)(tmp -= 0x20) >= 0x60) return -1; \
+	tmp = BF_atoi64[tmp]; \
+	if (tmp > 63) return -1; \
+	(dst) = tmp; \
+}
+
+#if BF_SCALE
+/* Architectures which can shift addresses left by 2 bits with no extra cost */
+#define BF_ROUND(L, R, N) \
+	tmp1 = L & 0xFF; \
+	tmp2 = L >> 8; \
+	tmp2 &= 0xFF; \
+	tmp3 = L >> 16; \
+	tmp3 &= 0xFF; \
+	tmp4 = L >> 24; \
+	tmp1 = data.ctx.S[3][tmp1]; \
+	tmp2 = data.ctx.S[2][tmp2]; \
+	tmp3 = data.ctx.S[1][tmp3]; \
+	tmp3 += data.ctx.S[0][tmp4]; \
+	tmp3 ^= tmp2; \
+	R ^= data.ctx.P[N + 1]; \
+	tmp3 += tmp1; \
+	R ^= tmp3;
+#else
+/* Architectures with no complicated addressing modes supported */
+#define BF_INDEX(S, i) \
+	(*((BF_word *)(((unsigned char *)S) + (i))))
+#define BF_ROUND(L, R, N) \
+	tmp1 = L & 0xFF; \
+	tmp1 <<= 2; \
+	tmp2 = L >> 6; \
+	tmp2 &= 0x3FC; \
+	tmp3 = L >> 14; \
+	tmp3 &= 0x3FC; \
+	tmp4 = L >> 22; \
+	tmp4 &= 0x3FC; \
+	tmp1 = BF_INDEX(data.ctx.S[3], tmp1); \
+	tmp2 = BF_INDEX(data.ctx.S[2], tmp2); \
+	tmp3 = BF_INDEX(data.ctx.S[1], tmp3); \
+	tmp3 += BF_INDEX(data.ctx.S[0], tmp4); \
+	tmp3 ^= tmp2; \
+	R ^= data.ctx.P[N + 1]; \
+	tmp3 += tmp1; \
+	R ^= tmp3;
+#endif
+
+/*
+ * Encrypt one block, BF_N is hardcoded here.
+ */
+#define BF_ENCRYPT \
+	L ^= data.ctx.P[0]; \
+	BF_ROUND(L, R, 0); \
+	BF_ROUND(R, L, 1); \
+	BF_ROUND(L, R, 2); \
+	BF_ROUND(R, L, 3); \
+	BF_ROUND(L, R, 4); \
+	BF_ROUND(R, L, 5); \
+	BF_ROUND(L, R, 6); \
+	BF_ROUND(R, L, 7); \
+	BF_ROUND(L, R, 8); \
+	BF_ROUND(R, L, 9); \
+	BF_ROUND(L, R, 10); \
+	BF_ROUND(R, L, 11); \
+	BF_ROUND(L, R, 12); \
+	BF_ROUND(R, L, 13); \
+	BF_ROUND(L, R, 14); \
+	BF_ROUND(R, L, 15); \
+	tmp4 = R; \
+	R = L; \
+	L = tmp4 ^ data.ctx.P[BF_N + 1];
+
+#if BF_ASM
+#define BF_body() \
+	_BF_body_r(&data.ctx);
+#else
+#define BF_body() \
+	L = R = 0; \
+	ptr = data.ctx.P; \
+	do { \
+		ptr += 2; \
+		BF_ENCRYPT; \
+		*(ptr - 2) = L; \
+		*(ptr - 1) = R; \
+	} while (ptr < &data.ctx.P[BF_N + 2]); \
+\
+	ptr = data.ctx.S[0]; \
+	do { \
+		ptr += 2; \
+		BF_ENCRYPT; \
+		*(ptr - 2) = L; \
+		*(ptr - 1) = R; \
+	} while (ptr < &data.ctx.S[3][0xFF]);
+#endif
+
 typedef unsigned int BF_word;
 typedef signed int BF_word_signed;
 
 /* Number of Blowfish rounds, this is also hardcoded into a few places */
-#define BF_N				16
 
 typedef BF_word BF_key[BF_N + 2];
 
@@ -340,10 +428,10 @@ static BF_ctx BF_init_state =
 	}
 };
 
-static unsigned char BF_itoa64[64 + 1] =
-	"./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+static unsigned char BF_itoa64[64 + 1] = "./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
-static unsigned char BF_atoi64[0x60] = {
+static unsigned char BF_atoi64[0x60] =
+{
 	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 0, 1,
 	54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 64, 64, 64, 64, 64,
 	64, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
@@ -352,24 +440,14 @@ static unsigned char BF_atoi64[0x60] = {
 	43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 64, 64, 64, 64, 64
 };
 
-#define BF_safe_atoi64(dst, src) \
-{ \
-	tmp = (unsigned char)(src); \
-	if ((unsigned int)(tmp -= 0x20) >= 0x60) return -1; \
-	tmp = BF_atoi64[tmp]; \
-	if (tmp > 63) return -1; \
-	(dst) = tmp; \
-}
+unsigned char _crypt_itoa64[64 + 1] = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-unsigned char _crypt_itoa64[64 + 1] =
-	"./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-
-char *_crypt_gensalt_traditional_rn(const char *prefix, unsigned long count,
-	const char *input, int size, char *output, int output_size)
+char *_crypt_gensalt_traditional_rn(const char *prefix, unsigned long count, const char *input, int size, char *output, int output_size)
 {
 	(void) prefix;
 
-	if (size < 2 || output_size < 2 + 1 || (count && count != 25)) {
+	if (size < 2 || output_size < 2 + 1 || (count && count != 25))
+	{
 		if (output_size > 0) output[0] = '\0';
 		__set_errno((output_size < 2 + 1) ? ERANGE : EINVAL);
 		return NULL;
@@ -382,8 +460,7 @@ char *_crypt_gensalt_traditional_rn(const char *prefix, unsigned long count,
 	return output;
 }
 
-char *_crypt_gensalt_extended_rn(const char *prefix, unsigned long count,
-	const char *input, int size, char *output, int output_size)
+char *_crypt_gensalt_extended_rn(const char *prefix, unsigned long count, const char *input, int size, char *output, int output_size)
 {
 	unsigned long value;
 
@@ -391,8 +468,8 @@ char *_crypt_gensalt_extended_rn(const char *prefix, unsigned long count,
 
 /* Even iteration counts make it easier to detect weak DES keys from a look
  * at the hash, so they should be avoided */
-	if (size < 3 || output_size < 1 + 4 + 4 + 1 ||
-	    (count && (count > 0xffffff || !(count & 1)))) {
+	if (size < 3 || output_size < 1 + 4 + 4 + 1 || (count && (count > 0xffffff || !(count & 1))))
+	{
 		if (output_size > 0) output[0] = '\0';
 		__set_errno((output_size < 1 + 4 + 4 + 1) ? ERANGE : EINVAL);
 		return NULL;
@@ -417,14 +494,14 @@ char *_crypt_gensalt_extended_rn(const char *prefix, unsigned long count,
 	return output;
 }
 
-char *_crypt_gensalt_md5_rn(const char *prefix, unsigned long count,
-	const char *input, int size, char *output, int output_size)
+char *_crypt_gensalt_md5_rn(const char *prefix, unsigned long count, const char *input, int size, char *output, int output_size)
 {
 	unsigned long value;
 
 	(void) prefix;
 
-	if (size < 3 || output_size < 3 + 4 + 1 || (count && count != 1000)) {
+	if (size < 3 || output_size < 3 + 4 + 1 || (count && count != 1000))
+	{
 		if (output_size > 0) output[0] = '\0';
 		__set_errno((output_size < 3 + 4 + 1) ? ERANGE : EINVAL);
 		return NULL;
@@ -464,7 +541,8 @@ static int BF_decode(BF_word *dst, const char *src, int size)
 	const unsigned char *sptr = (const unsigned char *)src;
 	unsigned int tmp, c1, c2, c3, c4;
 
-	do {
+	do
+	{
 		BF_safe_atoi64(c1, *sptr++);
 		BF_safe_atoi64(c2, *sptr++);
 		*dptr++ = (c1 << 2) | ((c2 & 0x30) >> 4);
@@ -488,7 +566,8 @@ static void BF_encode(char *dst, const BF_word *src, int size)
 	unsigned char *dptr = (unsigned char *)dst;
 	unsigned int c1, c2;
 
-	do {
+	do
+	{
 		c1 = *sptr++;
 		*dptr++ = BF_itoa64[c1 >> 2];
 		c1 = (c1 & 0x03) << 4;
@@ -520,103 +599,15 @@ static void BF_swap(BF_word *x, int count)
 	BF_word tmp;
 
 	if (*is_little_endian)
-	do {
+	do
+	{
 		tmp = *x;
 		tmp = (tmp << 16) | (tmp >> 16);
 		*x++ = ((tmp & 0x00FF00FF) << 8) | ((tmp >> 8) & 0x00FF00FF);
 	} while (--count);
 }
 
-#if BF_SCALE
-/* Architectures which can shift addresses left by 2 bits with no extra cost */
-#define BF_ROUND(L, R, N) \
-	tmp1 = L & 0xFF; \
-	tmp2 = L >> 8; \
-	tmp2 &= 0xFF; \
-	tmp3 = L >> 16; \
-	tmp3 &= 0xFF; \
-	tmp4 = L >> 24; \
-	tmp1 = data.ctx.S[3][tmp1]; \
-	tmp2 = data.ctx.S[2][tmp2]; \
-	tmp3 = data.ctx.S[1][tmp3]; \
-	tmp3 += data.ctx.S[0][tmp4]; \
-	tmp3 ^= tmp2; \
-	R ^= data.ctx.P[N + 1]; \
-	tmp3 += tmp1; \
-	R ^= tmp3;
-#else
-/* Architectures with no complicated addressing modes supported */
-#define BF_INDEX(S, i) \
-	(*((BF_word *)(((unsigned char *)S) + (i))))
-#define BF_ROUND(L, R, N) \
-	tmp1 = L & 0xFF; \
-	tmp1 <<= 2; \
-	tmp2 = L >> 6; \
-	tmp2 &= 0x3FC; \
-	tmp3 = L >> 14; \
-	tmp3 &= 0x3FC; \
-	tmp4 = L >> 22; \
-	tmp4 &= 0x3FC; \
-	tmp1 = BF_INDEX(data.ctx.S[3], tmp1); \
-	tmp2 = BF_INDEX(data.ctx.S[2], tmp2); \
-	tmp3 = BF_INDEX(data.ctx.S[1], tmp3); \
-	tmp3 += BF_INDEX(data.ctx.S[0], tmp4); \
-	tmp3 ^= tmp2; \
-	R ^= data.ctx.P[N + 1]; \
-	tmp3 += tmp1; \
-	R ^= tmp3;
-#endif
-
-/*
- * Encrypt one block, BF_N is hardcoded here.
- */
-#define BF_ENCRYPT \
-	L ^= data.ctx.P[0]; \
-	BF_ROUND(L, R, 0); \
-	BF_ROUND(R, L, 1); \
-	BF_ROUND(L, R, 2); \
-	BF_ROUND(R, L, 3); \
-	BF_ROUND(L, R, 4); \
-	BF_ROUND(R, L, 5); \
-	BF_ROUND(L, R, 6); \
-	BF_ROUND(R, L, 7); \
-	BF_ROUND(L, R, 8); \
-	BF_ROUND(R, L, 9); \
-	BF_ROUND(L, R, 10); \
-	BF_ROUND(R, L, 11); \
-	BF_ROUND(L, R, 12); \
-	BF_ROUND(R, L, 13); \
-	BF_ROUND(L, R, 14); \
-	BF_ROUND(R, L, 15); \
-	tmp4 = R; \
-	R = L; \
-	L = tmp4 ^ data.ctx.P[BF_N + 1];
-
-#if BF_ASM
-#define BF_body() \
-	_BF_body_r(&data.ctx);
-#else
-#define BF_body() \
-	L = R = 0; \
-	ptr = data.ctx.P; \
-	do { \
-		ptr += 2; \
-		BF_ENCRYPT; \
-		*(ptr - 2) = L; \
-		*(ptr - 1) = R; \
-	} while (ptr < &data.ctx.P[BF_N + 2]); \
-\
-	ptr = data.ctx.S[0]; \
-	do { \
-		ptr += 2; \
-		BF_ENCRYPT; \
-		*(ptr - 2) = L; \
-		*(ptr - 1) = R; \
-	} while (ptr < &data.ctx.S[3][0xFF]);
-#endif
-
-static void BF_set_key(const char *key, BF_key expanded, BF_key initial,
-    unsigned char flags)
+static void BF_set_key(const char *key, BF_key expanded, BF_key initial, unsigned char flags)
 {
 	const char *ptr = key;
 	unsigned int bug, i, j;
@@ -661,9 +652,11 @@ static void BF_set_key(const char *key, BF_key expanded, BF_key initial,
 
 	sign = diff = 0;
 
-	for (i = 0; i < BF_N + 2; i++) {
+	for (i = 0; i < BF_N + 2; i++)
+	{
 		tmp[0] = tmp[1] = 0;
-		for (j = 0; j < 4; j++) {
+		for (j = 0; j < 4; j++)
+		{
 			tmp[0] <<= 8;
 			tmp[0] |= (unsigned char)*ptr; /* correct */
 			tmp[1] <<= 8;
@@ -716,9 +709,7 @@ static void BF_set_key(const char *key, BF_key expanded, BF_key initial,
 	initial[0] ^= sign;
 }
 
-static char *BF_crypt(const char *key, const char *setting,
-	char *output, int size,
-	BF_word min)
+static char *BF_crypt(const char *key, const char *setting,	char *output, int size,	BF_word min)
 {
 #if BF_ASM
 	extern void _BF_body_r(BF_ctx *ctx);
@@ -726,7 +717,8 @@ static char *BF_crypt(const char *key, const char *setting,
 	static const unsigned char flags_by_subtype[26] =
 		{2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 0};
-	struct {
+	struct
+	{
 		BF_ctx ctx;
 		BF_key expanded_key;
 		union {
@@ -765,13 +757,13 @@ static char *BF_crypt(const char *key, const char *setting,
 	}
 	BF_swap(data.binary.salt, 4);
 
-	BF_set_key(key, data.expanded_key, data.ctx.P,
-	    flags_by_subtype[(unsigned int)(unsigned char)setting[2] - 'a']);
+	BF_set_key(key, data.expanded_key, data.ctx.P, flags_by_subtype[(unsigned int)(unsigned char)setting[2] - 'a']);
 
 	memcpy(data.ctx.S, BF_init_state.S, sizeof(data.ctx.S));
 
 	L = R = 0;
-	for (i = 0; i < BF_N + 2; i += 2) {
+	for (i = 0; i < BF_N + 2; i += 2)
+	{
 		L ^= data.binary.salt[i & 2];
 		R ^= data.binary.salt[(i & 2) + 1];
 		BF_ENCRYPT;
@@ -780,7 +772,8 @@ static char *BF_crypt(const char *key, const char *setting,
 	}
 
 	ptr = data.ctx.S[0];
-	do {
+	do
+	{
 		ptr += 4;
 		L ^= data.binary.salt[(BF_N + 2) & 3];
 		R ^= data.binary.salt[(BF_N + 3) & 3];
@@ -795,10 +788,12 @@ static char *BF_crypt(const char *key, const char *setting,
 		*(ptr - 1) = R;
 	} while (ptr < &data.ctx.S[3][0xFF]);
 
-	do {
+	do
+	{
 		int done;
 
-		for (i = 0; i < BF_N + 2; i += 2) {
+		for (i = 0; i < BF_N + 2; i += 2)
+		{
 			data.ctx.P[i] ^= data.expanded_key[i];
 			data.ctx.P[i + 1] ^= data.expanded_key[i + 1];
 		}
@@ -814,7 +809,8 @@ static char *BF_crypt(const char *key, const char *setting,
 			tmp2 = data.binary.salt[1];
 			tmp3 = data.binary.salt[2];
 			tmp4 = data.binary.salt[3];
-			for (i = 0; i < BF_N; i += 4) {
+			for (i = 0; i < BF_N; i += 4)
+			{
 				data.ctx.P[i] ^= tmp1;
 				data.ctx.P[i + 1] ^= tmp2;
 				data.ctx.P[i + 2] ^= tmp3;
@@ -825,12 +821,14 @@ static char *BF_crypt(const char *key, const char *setting,
 		} while (1);
 	} while (--count);
 
-	for (i = 0; i < 6; i += 2) {
+	for (i = 0; i < 6; i += 2)
+	{
 		L = BF_magic_w[i];
 		R = BF_magic_w[i + 1];
 
 		count = 64;
-		do {
+		do
+		{
 			BF_ENCRYPT;
 		} while (--count);
 
@@ -886,8 +884,7 @@ int _crypt_output_magic(const char *setting, char *output, int size)
  * The performance cost of this quick self-test is around 0.6% at the "$2a$08"
  * setting.
  */
-char *_crypt_blowfish_rn(const char *key, const char *setting,
-	char *output, int size)
+char *_crypt_blowfish_rn(const char *key, const char *setting, char *output, int size)
 {
 	const char *test_key = "8b \xd0\xc1\xd2\xcf\xcc\xd8";
 	const char *test_setting = "$2a$00$abcdefghijklmnopqrstuu";
@@ -897,7 +894,8 @@ char *_crypt_blowfish_rn(const char *key, const char *setting,
 	char *retval;
 	const char *p;
 	int save_errno, ok;
-	struct {
+	struct
+	{
 		char s[7 + 22 + 1];
 		char o[7 + 22 + 31 + 1 + 1 + 1];
 	} buf;
@@ -948,8 +946,7 @@ char *_crypt_blowfish_rn(const char *key, const char *setting,
 	return NULL;
 }
 
-char *_crypt_gensalt_blowfish_rn(const char *prefix, unsigned long count,
-	const char *input, int size, char *output, int output_size)
+char *_crypt_gensalt_blowfish_rn(const char *prefix, unsigned long count, const char *input, int size, char *output, int output_size)
 {
 	if (size < 16 || output_size < 7 + 22 + 1 ||
 	    (count && (count < 4 || count > 31)) ||
@@ -984,7 +981,8 @@ char *crypt_gensalt_rn(const char *prefix, unsigned long count, const char *inpu
 		char *_output, int _output_size);
 
 	/* This may be supported on some platforms in the future */
-	if (!input) {
+	if (!input)
+	{
 		__set_errno(EINVAL);
 		return NULL;
 	}
@@ -1003,7 +1001,8 @@ char *crypt_gensalt_rn(const char *prefix, unsigned long count, const char *inpu
 	    memchr(_crypt_itoa64, prefix[0], 64) &&
 	    memchr(_crypt_itoa64, prefix[1], 64)))
 		use = _crypt_gensalt_traditional_rn;
-	else {
+	else
+	{
 		__set_errno(EINVAL);
 		return NULL;
 	}
@@ -1112,7 +1111,7 @@ private:
 
 
 public:
-    std::string getHash(const char *password, long strength)
+    std::string create(const char *password, long strength)
     {
         char salt[BCRYPT_HASHSIZE];
         char hash[BCRYPT_HASHSIZE];
@@ -1120,6 +1119,14 @@ public:
         bcrypt_hashpw(password, salt, hash);
 
         return std::string(hash);
+    }
+
+    bool verify(const char *password, const char *expected_hash)
+    {
+        char hash[BCRYPT_HASHSIZE];
+        bcrypt_hashpw(password, expected_hash, hash);
+
+        return (strcmp(expected_hash, hash) == 0);
     }
 };
 
