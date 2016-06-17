@@ -57,28 +57,25 @@ int main(int argc, char *argv[])
 
 	if ((rows = sql->rows("SELECT txt FROM test_table LIMIT 2")))
 	{
-		JSON *arr = output->json->add(jsn_ARRAY, "arr", 0);
+		JSON *arr = output->json->array("arr");
 
 		for (int i = 0; i < sql->count; i++)
 		{
-		    arr->addElement(jsn_STRING, (long) rows[i][0]);
+		    arr->add("", rows[i][0]);
 		}
 	}
 
 	Bcrypt *crypt = new Bcrypt();
-	string hash = crypt->create("CorrectPassword", 12);
+	string hash = crypt->create("CorrectPassword", 8);
 
-	output->json->addNode("bcrypt")->add("hash", (char *) hash.c_str())
-	    ->parent()->add("isOk", crypt->verify("CorrectPassword", hash.c_str()))
-	    ->parent()->add("isNotOk", crypt->verify("WrongPassword", hash.c_str()));
+	output->json->addNode("bcrypt")->add("hash", hash)
+	    ->parent()->add("isOk", crypt->verify("CorrectPassword", hash))
+	    ->parent()->add("isNotOk", crypt->verify("WrongPassword", hash));
 
 	output->flush();
 
-	if (sql)
-	{
-	    //we need to close the connection
-	    delete sql;
-	}
+    // cleanup
+	if (sql) delete sql;
 
 	return 200;
 }
