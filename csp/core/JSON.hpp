@@ -2,6 +2,7 @@
 #define _JSON_HPP_ 1
 
 #include <cstring>
+#include <string>
 #include "gwan.h"
 
 // JSN_TYPE { jsn_FALSE = 0, jsn_TRUE, jsn_NULL, jsn_INTEGER, jsn_REAL, jsn_STRING, jsn_NODE, jsn_ARRAY }
@@ -47,10 +48,15 @@ public:
 		return new JSON(this, jsn_INTEGER, key, value);
 	}
 
-	JSON *addElement(JSN_TYPE type, long element)
-	{
-		return new JSON(this, type, "", element);
-	}
+	JSON *add(std::string key, std::string value)
+    {
+    	return new JSON(this, jsn_STRING, (char *) key.c_str(), (long) value.c_str());
+    }
+
+    JSON *array(std::string key)
+    {
+        return new JSON(this, jsn_ARRAY, (char *) key.c_str(), 0);
+    }
 
 	JSON *addNode(char *key)
 	{
