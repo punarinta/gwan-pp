@@ -25,6 +25,12 @@ public:
 		this->pParent = pParent;
 	}
 
+	// init by parsing
+	JSON(std::string text)
+    {
+    	this->obj = jsn_frtext(text.c_str(), "root");
+   	}
+
 	~JSON()
 	{
 		if (this->obj)
